@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --ivory: #f7f4ef;
+  --ivory-deep: #efe9df;
+  --charcoal: #2c2a26;
+  --charcoal-soft: #4a4740;
+  --gold: #9a7b4f;
+  --gold-muted: #c4a574;
+  --divider: #e5dfd4;
+  --surface: #fdfcfa;
+  --risk-elevated: #8b5a4a;
+}
+
+@theme inline {
+  --color-ivory: var(--ivory);
+  --color-ivory-deep: var(--ivory-deep);
+  --color-charcoal: var(--charcoal);
+  --color-charcoal-soft: var(--charcoal-soft);
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+  --color-divider: var(--divider);
+  --color-surface: var(--surface);
+  --font-serif: var(--font-playfair);
+  --font-display: var(--font-cormorant);
+  --font-sans: var(--font-inter);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ivory);
+  color: var(--charcoal);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gold) 25%, transparent);
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--ivory-deep) 0%,
+    var(--surface) 50%,
+    var(--ivory-deep) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
