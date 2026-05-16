@@ -6,10 +6,13 @@ import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Arrivals" },
+  { href: "/scenarios", label: "Live Signals", badge: true },
   { href: "/recovery", label: "Service Recovery" },
   { href: "/staff", label: "Staff Intelligence" },
   { href: "/orchestration", label: "Orchestration" },
 ];
+
+const simulatorNav = { href: "/simulate", label: "Scenario Simulator" };
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -38,6 +41,18 @@ export function Sidebar() {
             </Link>
           );
         })}
+        <div className="my-4 border-t border-divider" />
+        <Link
+          href={simulatorNav.href}
+          className={cn(
+            "px-3 py-2.5 text-sm tracking-wide transition-all duration-300 italic",
+            pathname.startsWith(simulatorNav.href)
+              ? "border-l-2 border-gold pl-[10px] text-charcoal"
+              : "border-l-2 border-transparent text-charcoal-soft/80 hover:text-gold"
+          )}
+        >
+          {simulatorNav.label}
+        </Link>
       </nav>
       <div className="border-t border-divider px-6 py-8">
         <p className="font-display text-xs uppercase tracking-[0.2em] text-gold">

@@ -11,7 +11,10 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string }).error || `API error: ${res.status}`
+    );
   }
 
   return res.json();
@@ -23,6 +26,36 @@ export interface Recommendation {
   reason: string;
   priority: string;
   status?: string;
+}
+
+export interface ScenarioRemedy {
+  action: string;
+  reason: string;
+  priority: string;
+  assignTo?: string;
+}
+
+export interface Scenario {
+  id: string;
+  guestId: string;
+  scenarioText: string;
+  eventType: "complaint" | "compliment" | "neutral" | "operational";
+  urgency: string;
+  analysis: string | null;
+  diagnosis: string | null;
+  remedies: ScenarioRemedy[];
+  suggestedStaff: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  guest: {
+    id: string;
+    name: string;
+    loyaltyTier: string;
+    archetype: string | null;
+    roomType: string | null;
+    arrivalEta: string | null;
+  };
 }
 
 export interface GuestSummary {
@@ -89,6 +122,7 @@ export interface GuestDetail extends GuestSummary {
     description: string | null;
     eventType: string;
   }[];
+  scenarios?: Scenario[];
 }
 
 export interface ServiceIncident {
@@ -145,4 +179,19 @@ export const api = {
         guest: { id: string; name: string };
       }[]
     >("/orchestration"),
+  getScenarios: (params?: { guestId?: string; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.guestId) q.set("guestId", params.guestId);
+    if (params?.status) q.set("status", params.status);
+    const query = q.toString();
+    return fetchApi<Scenario[]>(`/scenarios${query ? `?${query}` : ""}`);
+  },
+  getScenario: (id: string) => fetchApi<Scenario>(`/scenarios/${id}`),
+  submitScenario: (guestId: string, scenarioText: string) =>
+    fetchApi<Scenario>("/scenarios", {
+      method: "POST",
+      body: JSON.stringify({ guestId, scenarioText }),
+    }),
+  acknowledgeScenario: (id: string) =>
+    fetchApi<Scenario>(`/scenarios/${id}/acknowledge`, { method: "PATCH" }),
 };

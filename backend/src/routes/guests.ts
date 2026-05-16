@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { generateNarrative, generateRecommendations, classifyArchetype } from "../services/ai.js";
+import { buildGuestContext } from "../lib/guestContext.js";
 
 export const guestsRouter = Router();
 
@@ -51,6 +52,11 @@ guestsRouter.get("/:id", async (req, res) => {
       },
       memories: { orderBy: { createdAt: "desc" } },
       orchestrationEvents: { orderBy: { createdAt: "asc" } },
+      scenarios: {
+        where: { status: "active" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
     },
   });
 
@@ -59,38 +65,24 @@ guestsRouter.get("/:id", async (req, res) => {
     return;
   }
 
-  res.json(guest);
+  res.json({
+    ...guest,
+    scenarios: guest.scenarios.map((s) => ({
+      ...s,
+      remedies: s.remedies ? JSON.parse(s.remedies) : [],
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+    })),
+  });
 });
 
 guestsRouter.post("/:id/regenerate", async (req, res) => {
-  const guest = await prisma.guest.findUnique({
-    where: { id: req.params.id },
-    include: {
-      stays: true,
-      incidents: true,
-      memories: true,
-      affinities: { include: { staff: true } },
-    },
-  });
+  const context = await buildGuestContext(req.params.id);
 
-  if (!guest) {
+  if (!context) {
     res.status(404).json({ error: "Guest not found" });
     return;
   }
-
-  const context = {
-    name: guest.name,
-    loyaltyTier: guest.loyaltyTier,
-    archetype: guest.archetype,
-    stayCount: guest.stayCount,
-    sentimentScore: guest.sentimentScore,
-    riskLevel: guest.riskLevel,
-    memories: guest.memories.map((m) => m.content),
-    incidents: guest.incidents.map((i) => ({
-      category: i.category,
-      severity: i.severity,
-    })),
-  };
 
   const [narrative, archetype, recs] = await Promise.all([
     generateNarrative(context),
@@ -99,14 +91,16 @@ guestsRouter.post("/:id/regenerate", async (req, res) => {
   ]);
 
   const updated = await prisma.guest.update({
-    where: { id: guest.id },
+    where: { id: req.params.id },
     data: { narrativeSummary: narrative, archetype },
   });
 
-  await prisma.recommendation.deleteMany({ where: { guestId: guest.id } });
+  await prisma.recommendation.deleteMany({
+    where: { guestId: req.params.id, scenarioId: null },
+  });
   await prisma.recommendation.createMany({
     data: recs.map((r) => ({
-      guestId: guest.id,
+      guestId: req.params.id,
       recommendationType: r.type,
       reason: r.reason,
       priority: r.priority,

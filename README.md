@@ -34,12 +34,20 @@ Optional: set `ANTHROPIC_API_KEY` in `backend/.env` for live narrative generatio
 ## Demo flow (hackathon)
 
 1. **Arrivals** — View today's guests with narratives, risk flags, and recommendations.
-2. **Guest profile** — Open Alexandra Hartwell or Richard Pemberton for full memory graph.
-3. **Simulate flight delay** — On a guest profile, triggers orchestration timeline updates.
-4. **Refresh intelligence** — Regenerates narrative + recommendations (Claude or fallback).
-5. **Service Recovery** — Review billing and operational friction with recovery guidance.
-6. **Staff Intelligence** — See Elena ↔ guest affinity matches.
-7. **Orchestration** — Cross-guest event timeline (T-24h → Arrival).
+2. **Scenario Simulator** (`/simulate`) — Select a guest, describe a situation (complaint, compliment, or operational), send to staff console.
+3. **Live Signals** (`/scenarios`) — Staff view polls every 5s; shows AI analysis, diagnosis, and affinity-based remedies.
+4. **Guest profile** — Active scenarios appear at top; new recommendations added from scenario.
+5. **Simulate flight delay** — On a guest profile, triggers orchestration timeline updates.
+6. **Refresh intelligence** — Regenerates narrative + recommendations (Claude or fallback).
+7. **Service Recovery** — Review billing and operational friction with recovery guidance.
+8. **Staff Intelligence** — See Elena ↔ guest affinity matches.
+9. **Orchestration** — Cross-guest event timeline (T-24h → Arrival).
+
+### Scenario demo script
+
+1. Open **Scenario Simulator** → select **Richard Pemberton** → paste: *"Guest upset about incorrect minibar charges on folio."* → **Send to staff console** (wait ~3–5s for Claude).
+2. Open **Live Signals** — see complaint classification, recovery diagnosis, staff assignment.
+3. Open Richard's **guest profile** — live banner + new recommendations at top.
 
 ## Modules
 

@@ -1,100 +1,286 @@
+import "dotenv/config";
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
+const MODEL = "claude-sonnet-4-20250514";
 
 const LUXURY_SYSTEM = `You are the hospitality intelligence layer for Rosewood Sand Hill, a luxury hotel.
 Write in a calm, discreet, concierge-like tone. Avoid robotic phrasing, excessive enthusiasm, corporate jargon, and surveillance language.
 Abstract insights into service-oriented hospitality language. Never include raw PII or creepy personalization.
 Keep responses concise and operationally useful for hotel staff.`;
 
-export async function generateNarrative(guestContext: Record<string, unknown>): Promise<string> {
-  if (!client) {
-    return fallbackNarrative(guestContext);
+function getClient(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!key) return null;
+  return new Anthropic({ apiKey: key });
+}
+
+function extractText(message: Anthropic.Message): string | null {
+  const block = message.content[0];
+  return block.type === "text" ? block.text.trim() : null;
+}
+
+function parseJson<T>(text: string): T | null {
+  try {
+    const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]) as T;
+  } catch (e) {
+    console.error("[ai] JSON parse failed:", e);
   }
+  return null;
+}
+
+async function callClaude(
+  userPrompt: string,
+  maxTokens = 600
+): Promise<string | null> {
+  const client = getClient();
+  if (!client) return null;
 
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 300,
+      model: MODEL,
+      max_tokens: maxTokens,
       system: LUXURY_SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `Generate a 2-3 sentence hospitality guest narrative for staff briefing. Context:\n${JSON.stringify(guestContext, null, 2)}`,
-        },
-      ],
+      messages: [{ role: "user", content: userPrompt }],
     });
-
-    const block = message.content[0];
-    if (block.type === "text") return block.text.trim();
-  } catch {
-    /* fall through */
+    return extractText(message);
+  } catch (e) {
+    console.error("[ai] Anthropic call failed:", e);
+    return null;
   }
+}
 
-  return fallbackNarrative(guestContext);
+export async function generateNarrative(
+  guestContext: Record<string, unknown>
+): Promise<string> {
+  const text = await callClaude(
+    `Generate a 2-3 sentence hospitality guest narrative for staff briefing. Context:\n${JSON.stringify(guestContext, null, 2)}`,
+    300
+  );
+  return text ?? fallbackNarrative(guestContext);
 }
 
 export async function generateRecommendations(
   guestContext: Record<string, unknown>
 ): Promise<Array<{ type: string; reason: string; priority: string }>> {
-  if (!client) {
-    return fallbackRecommendations(guestContext);
+  const text = await callClaude(
+    `Return ONLY a JSON array of 3-5 operational recommendations. Each item: { "type": string, "reason": string, "priority": "high"|"medium"|"low" }. Context:\n${JSON.stringify(guestContext, null, 2)}`,
+    500
+  );
+  if (text) {
+    const parsed = parseJson<Array<{ type: string; reason: string; priority: string }>>(text);
+    if (parsed?.length) return parsed;
   }
-
-  try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: LUXURY_SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `Return JSON array of 3-5 operational recommendations. Each item: { "type": string, "reason": string, "priority": "high"|"medium"|"low" }. Context:\n${JSON.stringify(guestContext, null, 2)}`,
-        },
-      ],
-    });
-
-    const block = message.content[0];
-    if (block.type === "text") {
-      const match = block.text.match(/\[[\s\S]*\]/);
-      if (match) return JSON.parse(match[0]);
-    }
-  } catch {
-    /* fall through */
-  }
-
   return fallbackRecommendations(guestContext);
 }
 
 export async function classifyArchetype(
   guestContext: Record<string, unknown>
 ): Promise<string> {
-  if (!client) {
-    return (guestContext.archetype as string) || "Restorative Executive";
+  const text = await callClaude(
+    `Classify into ONE archetype: Restorative Executive, Cultural Explorer, Status Sensitive VIP, or Family Memory Builder. Reply with only the archetype name. Context:\n${JSON.stringify(guestContext, null, 2)}`,
+    50
+  );
+  return text ?? (guestContext.archetype as string) ?? "Restorative Executive";
+}
+
+export interface ScenarioAnalysis {
+  eventType: "complaint" | "compliment" | "neutral" | "operational";
+  urgency: "low" | "medium" | "high";
+  analysis: string;
+}
+
+export interface ScenarioRemedy {
+  action: string;
+  reason: string;
+  priority: "high" | "medium" | "low";
+  assignTo?: string;
+}
+
+export interface ScenarioDiagnosis {
+  diagnosis: string;
+  remedies: ScenarioRemedy[];
+  suggestedStaff: string | null;
+  handlingTone: string;
+}
+
+export async function analyzeScenario(
+  scenarioText: string,
+  guestContext: Record<string, unknown>
+): Promise<ScenarioAnalysis> {
+  const text = await callClaude(
+    `A live hospitality scenario was reported for an in-house guest. Analyze it for staff.
+
+Scenario: "${scenarioText}"
+
+Guest context:
+${JSON.stringify(guestContext, null, 2)}
+
+Return ONLY JSON:
+{
+  "eventType": "complaint" | "compliment" | "neutral" | "operational",
+  "urgency": "low" | "medium" | "high",
+  "analysis": "2-3 sentence operational summary for staff — discreet, no surveillance language"
+}`,
+    400
+  );
+
+  const parsed = text ? parseJson<ScenarioAnalysis>(text) : null;
+  if (parsed?.analysis) return parsed;
+
+  return fallbackAnalyzeScenario(scenarioText, guestContext);
+}
+
+export async function diagnoseScenario(
+  scenarioText: string,
+  analysis: ScenarioAnalysis,
+  guestContext: Record<string, unknown>
+): Promise<ScenarioDiagnosis> {
+  const affinities = (guestContext.affinities as Array<{ staffName: string; role: string; affinityScore: number }>) ?? [];
+  const topStaff = affinities[0];
+
+  const text = await callClaude(
+    `You are advising Rosewood Sand Hill staff on handling a live guest scenario.
+
+Scenario: "${scenarioText}"
+Classification: ${analysis.eventType} (urgency: ${analysis.urgency})
+Initial analysis: ${analysis.analysis}
+
+Guest context (memories, incidents, affinities):
+${JSON.stringify(guestContext, null, 2)}
+
+Rules:
+- For COMPLAINTS: prioritize recovery, empathy, discreet escalation; reference prior friction if relevant; suggest staff with highest affinity when appropriate.
+- For COMPLIMENTS: suggest thoughtful acknowledgment or amenity — avoid over-the-top gestures; reinforce what worked.
+- For OPERATIONAL/NEUTRAL: practical orchestration steps only.
+- Never sound robotic or surveillance-like.
+
+Return ONLY JSON:
+{
+  "diagnosis": "2-4 sentence staff briefing on how to handle this",
+  "handlingTone": "brief phrase e.g. discreet recovery / warm acknowledgment",
+  "suggestedStaff": "staff name or null",
+  "remedies": [
+    { "action": "snake_case_action", "reason": "why", "priority": "high|medium|low", "assignTo": "staff name or null" }
+  ]
+}`,
+    700
+  );
+
+  const parsed = text ? parseJson<ScenarioDiagnosis>(text) : null;
+  if (parsed?.diagnosis && parsed.remedies?.length) {
+    return {
+      ...parsed,
+      suggestedStaff: parsed.suggestedStaff ?? topStaff?.staffName ?? null,
+    };
   }
 
-  try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 50,
-      system: LUXURY_SYSTEM,
-      messages: [
+  return fallbackDiagnoseScenario(scenarioText, analysis, guestContext);
+}
+
+function fallbackAnalyzeScenario(
+  scenarioText: string,
+  ctx: Record<string, unknown>
+): ScenarioAnalysis {
+  const lower = scenarioText.toLowerCase();
+  let eventType: ScenarioAnalysis["eventType"] = "neutral";
+  if (
+    /complaint|angry|upset|delay|wrong|billing|cold|dirty|rude|disappoint|frustrat|issue|problem/.test(lower)
+  ) {
+    eventType = "complaint";
+  } else if (
+    /thank|wonderful|excellent|compliment|amazing|love|perfect|grateful|appreciate|outstanding/.test(lower)
+  ) {
+    eventType = "compliment";
+  } else if (/flight|arrival|room|spa|reservation|check/.test(lower)) {
+    eventType = "operational";
+  }
+
+  const urgency =
+    eventType === "complaint" && ctx.riskLevel === "elevated" ? "high" : eventType === "complaint" ? "medium" : "low";
+
+  return {
+    eventType,
+    urgency,
+    analysis: `Live ${eventType} signal for ${ctx.name}: "${scenarioText.slice(0, 120)}${scenarioText.length > 120 ? "…" : ""}". Review guest memory and assign appropriate staff response.`,
+  };
+}
+
+function fallbackDiagnoseScenario(
+  scenarioText: string,
+  analysis: ScenarioAnalysis,
+  ctx: Record<string, unknown>
+): ScenarioDiagnosis {
+  const affinities = (ctx.affinities as Array<{ staffName: string; role: string }>) ?? [];
+  const suggestedStaff = affinities[0]?.staffName ?? null;
+
+  if (analysis.eventType === "compliment") {
+    return {
+      diagnosis:
+        "Acknowledge warmly but discreetly. Reinforce the positive experience without drawing excessive attention — align with guest preference for privacy.",
+      handlingTone: "warm acknowledgment",
+      suggestedStaff,
+      remedies: [
         {
-          role: "user",
-          content: `Classify into ONE archetype: Restorative Executive, Cultural Explorer, Status Sensitive VIP, or Family Memory Builder. Reply with only the archetype name. Context:\n${JSON.stringify(guestContext, null, 2)}`,
+          action: "personalized_acknowledgment",
+          reason: "Guest expressed satisfaction — a sincere note from leadership reinforces loyalty.",
+          priority: "medium",
+          assignTo: suggestedStaff ?? undefined,
+        },
+        {
+          action: "memory_update",
+          reason: "Record delight trigger in guest memory for future stays.",
+          priority: "low",
         },
       ],
-    });
-
-    const block = message.content[0];
-    if (block.type === "text") return block.text.trim();
-  } catch {
-    /* fall through */
+    };
   }
 
-  return "Restorative Executive";
+  if (analysis.eventType === "complaint") {
+    return {
+      diagnosis:
+        "Treat as service recovery priority. Address root cause promptly, avoid defensiveness, and offer a discreet remedy aligned with guest expectations.",
+      handlingTone: "discreet recovery",
+      suggestedStaff,
+      remedies: [
+        {
+          action: "manager_outreach",
+          reason: `Scenario requires attentive handling: ${scenarioText.slice(0, 80)}`,
+          priority: analysis.urgency === "high" ? "high" : "medium",
+          assignTo: suggestedStaff ?? undefined,
+        },
+        ...(ctx.riskLevel === "elevated"
+          ? [
+              {
+                action: "proactive_folio_review",
+                reason: "Guest has elevated risk profile — verify billing and charges.",
+                priority: "high" as const,
+              },
+            ]
+          : []),
+        {
+          action: "follow_up_before_checkout",
+          reason: "Confirm resolution before departure to restore sentiment.",
+          priority: "medium",
+        },
+      ],
+    };
+  }
+
+  return {
+    diagnosis:
+      "Operational scenario — coordinate departments quietly and update arrival/orchestration timeline as needed.",
+    handlingTone: "calm orchestration",
+    suggestedStaff,
+    remedies: [
+      {
+        action: "coordinate_operations",
+        reason: scenarioText.slice(0, 100),
+        priority: "medium",
+        assignTo: suggestedStaff ?? undefined,
+      },
+    ],
+  };
 }
 
 function fallbackNarrative(ctx: Record<string, unknown>): string {
@@ -110,11 +296,6 @@ function fallbackRecommendations(
     {
       type: "expedite_check_in",
       reason: "Guest values efficiency; prior friction around arrival timing.",
-      priority: "high",
-    },
-    {
-      type: "prewarm_room",
-      reason: "Restorative stay pattern suggests early room readiness.",
       priority: "medium",
     },
     {

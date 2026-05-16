@@ -7,7 +7,15 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Sparkles, Plane } from "lucide-react";
 import { api, GuestDetail } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
-import { cn, formatSentiment, sentimentColor } from "@/lib/utils";
+import {
+  cn,
+  formatSentiment,
+  priorityBadgeVariant,
+  resolutionBadgeVariant,
+  sentimentColor,
+  severityBadgeVariant,
+} from "@/lib/utils";
+import { LiveScenarioBanner } from "@/components/scenario/LiveScenarioBanner";
 
 export default function GuestProfilePage() {
   const params = useParams();
@@ -103,6 +111,8 @@ export default function GuestProfilePage() {
           <GuestMetaRow guest={guest} />
         </header>
 
+        <LiveScenarioBanner guestId={id} />
+
         <div className="mt-12 grid gap-10 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-10">
             <Section title="Narrative">
@@ -139,7 +149,7 @@ export default function GuestProfilePage() {
                     key={r.id}
                     className="flex gap-4 border border-divider bg-surface p-5"
                   >
-                    <Badge variant={r.priority === "high" ? "gold" : "muted"}>
+                    <Badge variant={priorityBadgeVariant(r.priority)}>
                       {r.priority}
                     </Badge>
                     <div>
@@ -272,13 +282,25 @@ function IncidentsList({
   return (
     <>
       {incidents.map((inc) => (
-        <div key={inc.id} className="mb-4 border border-divider p-4 text-sm">
+        <div key={inc.id} className={cn(
+            "mb-4 border p-4 text-sm",
+            inc.severity === "high"
+              ? "border-[#8b5a4a]/25 bg-[#8b5a4a]/[0.03]"
+              : inc.severity === "medium"
+                ? "border-amber-900/15 bg-amber-900/[0.03]"
+                : "border-divider"
+          )}>
           <p className="font-medium capitalize">
             {inc.category.replace(/_/g, " ")}
           </p>
-          <Badge variant="risk" className="mt-2">
-            {inc.severity}
-          </Badge>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant={severityBadgeVariant(inc.severity)}>
+              {inc.severity}
+            </Badge>
+            <Badge variant={resolutionBadgeVariant(inc.resolutionStatus)}>
+              {inc.resolutionStatus}
+            </Badge>
+          </div>
           <p className="mt-3 text-charcoal-soft">{inc.recoveryNotes}</p>
         </div>
       ))}

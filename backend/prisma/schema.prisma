@@ -33,6 +33,7 @@ model Guest {
   affinities        StaffAffinity[]
   memories          GuestMemory[]
   orchestrationEvents OrchestrationEvent[]
+  scenarios         Scenario[]
 }
 
 model Stay {
@@ -78,6 +79,7 @@ model Recommendation {
   reason             String
   priority           String   @default("medium")
   status             String   @default("pending")
+  scenarioId         String?
   generatedAt        DateTime @default(now())
 }
 
@@ -121,4 +123,20 @@ model OrchestrationEvent {
   description String?
   eventType   String
   createdAt   DateTime @default(now())
+}
+
+model Scenario {
+  id              String   @id @default(cuid())
+  guestId         String
+  guest           Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  scenarioText    String
+  eventType       String   @default("neutral")
+  urgency         String   @default("medium")
+  analysis        String?
+  diagnosis       String?
+  remedies        String?
+  suggestedStaff  String?
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
