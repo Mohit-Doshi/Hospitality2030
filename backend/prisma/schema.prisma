@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Guest {
+  id                String   @id @default(cuid())
+  name              String
+  email             String?
+  loyaltyTier       String   @default("Member")
+  archetype         String?
+  sentimentScore    Float    @default(0.75)
+  narrativeSummary  String?
+  arrivalEta        String?
+  stayCount         Int      @default(1)
+  riskLevel         String   @default("low")
+  delightOpportunity String?
+  checkIn           DateTime?
+  checkOut          DateTime?
+  roomType          String?
+  flightStatus      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  stays             Stay[]
+  interactions      Interaction[]
+  incidents         ServiceIncident[]
+  recommendations   Recommendation[]
+  affinities        StaffAffinity[]
+  memories          GuestMemory[]
+  orchestrationEvents OrchestrationEvent[]
+}
+
+model Stay {
+  id                 String   @id @default(cuid())
+  guestId            String
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  property           String   @default("Rosewood Sand Hill")
+  roomType           String?
+  checkIn            DateTime
+  checkOut           DateTime
+  satisfactionScore  Float?
+  notes              String?
+}
+
+model Interaction {
+  id              String   @id @default(cuid())
+  guestId         String
+  guest           Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  staffId         String?
+  staff           Staff?   @relation(fields: [staffId], references: [id])
+  interactionType String
+  sentiment       Float    @default(0.8)
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+model ServiceIncident {
+  id               String   @id @default(cuid())
+  guestId          String
+  guest            Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  category         String
+  severity         String   @default("medium")
+  resolutionStatus String   @default("open")
+  recoveryNotes    String?
+  createdAt        DateTime @default(now())
+}
+
+model Recommendation {
+  id                 String   @id @default(cuid())
+  guestId            String
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  recommendationType String
+  reason             String
+  priority           String   @default("medium")
+  status             String   @default("pending")
+  generatedAt        DateTime @default(now())
+}
+
+model Staff {
+  id           String   @id @default(cuid())
+  name         String
+  role         String
+  department   String?
+  avatarInitials String?
+
+  interactions Interaction[]
+  affinities   StaffAffinity[]
+}
+
+model StaffAffinity {
+  id            String   @id @default(cuid())
+  guestId       String
+  guest         Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  staffId       String
+  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  affinityScore Float    @default(0.8)
+  notes         String?
+}
+
+model GuestMemory {
+  id        String   @id @default(cuid())
+  guestId   String
+  guest     Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  category  String
+  content   String
+  emotional String?
+  createdAt DateTime @default(now())
+}
+
+model OrchestrationEvent {
+  id          String   @id @default(cuid())
+  guestId     String
+  guest       Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  timelineOffset String
+  title       String
+  description String?
+  eventType   String
+  createdAt   DateTime @default(now())
+}
