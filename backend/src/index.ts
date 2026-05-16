@@ -29,5 +29,5 @@ app.use("/api/scenarios", scenariosRouter);
 
 app.listen(port, () => {
   console.log(`Rosewood Intelligence API listening on :${port}`);
-  console.log("Routes: /api/guests, /api/scenarios, /api/recovery, /api/staff, /api/orchestration");
+  console.log("Routes: /api/guests, /api/scenarios (+ /property), /api/recovery, /api/staff, /api/orchestration");
 });

@@ -35,6 +35,17 @@ export interface ScenarioRemedy {
   assignTo?: string;
 }
 
+export interface PropertyScenarioResult {
+  propertyEventId: string;
+  guestCount: number;
+  propertyAnalysis: {
+    eventType: string;
+    urgency: string;
+    analysis: string;
+  } | null;
+  scenarios: Scenario[];
+}
+
 export interface Scenario {
   id: string;
   guestId: string;
@@ -46,6 +57,8 @@ export interface Scenario {
   remedies: ScenarioRemedy[];
   suggestedStaff: string | null;
   status: string;
+  scope?: string;
+  propertyEventId?: string | null;
   createdAt: string;
   updatedAt: string;
   guest: {
@@ -191,6 +204,11 @@ export const api = {
     fetchApi<Scenario>("/scenarios", {
       method: "POST",
       body: JSON.stringify({ guestId, scenarioText }),
+    }),
+  submitPropertyScenario: (scenarioText: string) =>
+    fetchApi<PropertyScenarioResult>("/scenarios/property", {
+      method: "POST",
+      body: JSON.stringify({ scenarioText }),
     }),
   acknowledgeScenario: (id: string) =>
     fetchApi<Scenario>(`/scenarios/${id}/acknowledge`, { method: "PATCH" }),

@@ -183,6 +183,18 @@ function fallbackAnalyzeScenario(
   ctx: Record<string, unknown>
 ): ScenarioAnalysis {
   const lower = scenarioText.toLowerCase();
+
+  if (ctx.propertyWide || lower.includes("[property-wide]")) {
+    const urgency = /disaster|fire|flood|earthquake|evacuation|emergency/i.test(lower)
+      ? "high"
+      : "medium";
+    return {
+      eventType: "operational",
+      urgency,
+      analysis: `Property-wide event with individualized guest impact. ${ctx.name} may require tailored communication given their ${ctx.archetype || "profile"} and ${ctx.loyaltyTier} status.`,
+    };
+  }
+
   let eventType: ScenarioAnalysis["eventType"] = "neutral";
   if (
     /complaint|angry|upset|delay|wrong|billing|cold|dirty|rude|disappoint|frustrat|issue|problem/.test(lower)
@@ -213,6 +225,28 @@ function fallbackDiagnoseScenario(
 ): ScenarioDiagnosis {
   const affinities = (ctx.affinities as Array<{ staffName: string; role: string }>) ?? [];
   const suggestedStaff = affinities[0]?.staffName ?? null;
+
+  if (analysis.eventType === "operational" && (ctx.propertyWide || scenarioText.includes("[Property-wide]"))) {
+    return {
+      diagnosis: `Coordinate property-wide response for ${ctx.name}. Prioritize clear proactive communication and alternative arrangements aligned with their preferences.`,
+      handlingTone: "calm orchestration",
+      suggestedStaff,
+      remedies: [
+        {
+          action: "proactive_guest_outreach",
+          reason: "Property incident requires individualized update before guest inquires.",
+          priority: analysis.urgency === "high" ? "high" : "medium",
+          assignTo: suggestedStaff ?? undefined,
+        },
+        {
+          action: "offer_alternative_amenity",
+          reason: "Mitigate impact of property limitation with suitable substitute experience.",
+          priority: "medium",
+          assignTo: suggestedStaff ?? undefined,
+        },
+      ],
+    };
+  }
 
   if (analysis.eventType === "compliment") {
     return {

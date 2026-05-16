@@ -126,17 +126,19 @@ model OrchestrationEvent {
 }
 
 model Scenario {
-  id              String   @id @default(cuid())
-  guestId         String
-  guest           Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
-  scenarioText    String
-  eventType       String   @default("neutral")
-  urgency         String   @default("medium")
-  analysis        String?
-  diagnosis       String?
-  remedies        String?
-  suggestedStaff  String?
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  guestId          String
+  guest            Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  scenarioText     String
+  eventType        String   @default("neutral")
+  urgency          String   @default("medium")
+  analysis         String?
+  diagnosis        String?
+  remedies         String?
+  suggestedStaff   String?
+  status           String   @default("active")
+  scope            String   @default("guest")
+  propertyEventId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

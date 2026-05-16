@@ -1,17 +1,20 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { buildGuestContext } from "../lib/guestContext.js";
-import { analyzeScenario, diagnoseScenario } from "../services/ai.js";
+import { processScenarioForGuest, processPropertyWideScenario } from "../services/scenarioProcessor.js";
 
 export const scenariosRouter = Router();
 
 scenariosRouter.get("/", async (req, res) => {
-  const { guestId, status } = req.query;
+  const { guestId, status, propertyEventId } = req.query;
 
   const scenarios = await prisma.scenario.findMany({
     where: {
       ...(guestId && typeof guestId === "string" ? { guestId } : {}),
       ...(status && typeof status === "string" ? { status } : {}),
+      ...(propertyEventId && typeof propertyEventId === "string"
+        ? { propertyEventId }
+        : {}),
     },
     include: {
       guest: {
@@ -30,6 +33,24 @@ scenariosRouter.get("/", async (req, res) => {
   });
 
   res.json(scenarios.map(formatScenario));
+});
+
+scenariosRouter.post("/property", async (req, res) => {
+  const { scenarioText } = req.body as { scenarioText?: string };
+
+  if (!scenarioText?.trim()) {
+    res.status(400).json({ error: "scenarioText is required" });
+    return;
+  }
+
+  const result = await processPropertyWideScenario(scenarioText);
+
+  res.status(201).json({
+    propertyEventId: result.propertyEventId,
+    guestCount: result.guestCount,
+    propertyAnalysis: result.propertyAnalysis,
+    scenarios: result.scenarios.map(formatScenario),
+  });
 });
 
 scenariosRouter.get("/:id", async (req, res) => {
@@ -75,87 +96,10 @@ scenariosRouter.post("/", async (req, res) => {
     return;
   }
 
-  const analysis = await analyzeScenario(scenarioText.trim(), guestContext);
-  const diagnosis = await diagnoseScenario(scenarioText.trim(), analysis, guestContext);
-
-  const scenario = await prisma.scenario.create({
-    data: {
-      guestId,
-      scenarioText: scenarioText.trim(),
-      eventType: analysis.eventType,
-      urgency: analysis.urgency,
-      analysis: analysis.analysis,
-      diagnosis: diagnosis.diagnosis,
-      remedies: JSON.stringify(diagnosis.remedies),
-      suggestedStaff: diagnosis.suggestedStaff,
-      status: "active",
-    },
-    include: {
-      guest: {
-        select: {
-          id: true,
-          name: true,
-          loyaltyTier: true,
-          archetype: true,
-          roomType: true,
-          arrivalEta: true,
-        },
-      },
-    },
-  });
-
-  await prisma.recommendation.createMany({
-    data: diagnosis.remedies.map((r) => ({
-      guestId,
-      recommendationType: r.action,
-      reason: r.reason,
-      priority: r.priority,
-      status: "pending",
-      scenarioId: scenario.id,
-    })),
-  });
-
-  const eventTitle =
-    analysis.eventType === "complaint"
-      ? "Service signal — recovery initiated"
-      : analysis.eventType === "compliment"
-        ? "Delight signal — acknowledgment recommended"
-        : "Operational scenario received";
-
-  await prisma.orchestrationEvent.create({
-    data: {
-      guestId,
-      timelineOffset: "Live",
-      title: eventTitle,
-      description: analysis.analysis,
-      eventType: analysis.eventType === "complaint" ? "alert" : "signal",
-    },
-  });
-
-  if (analysis.eventType === "complaint" && analysis.urgency !== "low") {
-    await prisma.serviceIncident.create({
-      data: {
-        guestId,
-        category: "live_scenario",
-        severity: analysis.urgency,
-        resolutionStatus: "open",
-        recoveryNotes: diagnosis.diagnosis,
-      },
-    });
-  }
-
-  if (analysis.eventType === "compliment") {
-    const newSentiment = Math.min(0.98, guestContext.sentimentScore + 0.03);
-    await prisma.guest.update({
-      where: { id: guestId },
-      data: { sentimentScore: newSentiment },
-    });
-  } else if (analysis.eventType === "complaint" && analysis.urgency === "high") {
-    const newSentiment = Math.max(0.4, guestContext.sentimentScore - 0.08);
-    await prisma.guest.update({
-      where: { id: guestId },
-      data: { sentimentScore: newSentiment, riskLevel: "elevated" },
-    });
+  const scenario = await processScenarioForGuest(guestId, scenarioText.trim());
+  if (!scenario) {
+    res.status(404).json({ error: "Guest not found" });
+    return;
   }
 
   res.status(201).json(formatScenario(scenario));
@@ -194,6 +138,8 @@ function formatScenario(
     remedies: string | null;
     suggestedStaff: string | null;
     status: string;
+    scope: string;
+    propertyEventId: string | null;
     createdAt: Date;
     updatedAt: Date;
     guest: {

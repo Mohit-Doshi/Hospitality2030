@@ -140,6 +140,9 @@ function ScenarioCardHeader({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        {scenario.scope === "property" && (
+          <Badge variant="gold">Property-wide</Badge>
+        )}
         <Badge variant={eventVariant}>{scenario.eventType}</Badge>
         <Badge variant={severityBadgeVariant(scenario.urgency)}>
           {scenario.urgency}

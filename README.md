@@ -34,7 +34,7 @@ Optional: set `ANTHROPIC_API_KEY` in `backend/.env` for live narrative generatio
 ## Demo flow (hackathon)
 
 1. **Arrivals** — View today's guests with narratives, risk flags, and recommendations.
-2. **Scenario Simulator** (`/simulate`) — Select a guest, describe a situation (complaint, compliment, or operational), send to staff console.
+2. **Scenario Simulator** (`/simulate`) — **Single guest** or **Property-wide** mode (WiFi outage, pool/gym closure, weather, etc.) — broadcasts personalized intelligence to all guests.
 3. **Live Signals** (`/scenarios`) — Staff view polls every 5s; shows AI analysis, diagnosis, and affinity-based remedies.
 4. **Guest profile** — Active scenarios appear at top; new recommendations added from scenario.
 5. **Simulate flight delay** — On a guest profile, triggers orchestration timeline updates.
