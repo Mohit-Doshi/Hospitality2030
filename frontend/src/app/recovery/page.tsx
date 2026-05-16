@@ -6,7 +6,12 @@ import { motion } from "framer-motion";
 import { api, ServiceIncident } from "@/lib/api";
 import { PageHeader } from "@/components/guest/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { cn, resolutionBadgeVariant, severityBadgeVariant } from "@/lib/utils";
+import {
+  cn,
+  resolutionBadgeVariant,
+  severityBadgeVariant,
+  severityBoxClass,
+} from "@/lib/utils";
 
 export default function RecoveryPage() {
   const [incidents, setIncidents] = useState<ServiceIncident[]>([]);
@@ -45,14 +50,7 @@ export default function RecoveryPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06, duration: 0.5 }}
-              className={cn(
-                "border bg-surface p-8",
-                inc.severity === "high"
-                  ? "border-[#8b5a4a]/25"
-                  : inc.severity === "medium"
-                    ? "border-amber-900/15"
-                    : "border-divider"
-              )}
+              className={cn("border p-8", severityBoxClass(inc.severity))}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>

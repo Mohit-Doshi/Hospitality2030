@@ -14,6 +14,7 @@ import {
   resolutionBadgeVariant,
   sentimentColor,
   severityBadgeVariant,
+  severityBoxClass,
 } from "@/lib/utils";
 import { LiveScenarioBanner } from "@/components/scenario/LiveScenarioBanner";
 
@@ -147,7 +148,10 @@ export default function GuestProfilePage() {
                 {guest.recommendations.map((r) => (
                   <div
                     key={r.id}
-                    className="flex gap-4 border border-divider bg-surface p-5"
+                    className={cn(
+                      "flex gap-4 border p-5",
+                      severityBoxClass(r.priority)
+                    )}
                   >
                     <Badge variant={priorityBadgeVariant(r.priority)}>
                       {r.priority}
@@ -282,14 +286,10 @@ function IncidentsList({
   return (
     <>
       {incidents.map((inc) => (
-        <div key={inc.id} className={cn(
-            "mb-4 border p-4 text-sm",
-            inc.severity === "high"
-              ? "border-[#8b5a4a]/25 bg-[#8b5a4a]/[0.03]"
-              : inc.severity === "medium"
-                ? "border-amber-900/15 bg-amber-900/[0.03]"
-                : "border-divider"
-          )}>
+        <div
+          key={inc.id}
+          className={cn("mb-4 border p-4 text-sm", severityBoxClass(inc.severity))}
+        >
           <p className="font-medium capitalize">
             {inc.category.replace(/_/g, " ")}
           </p>

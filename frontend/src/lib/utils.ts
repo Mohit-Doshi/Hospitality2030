@@ -24,6 +24,13 @@ export function priorityBadgeVariant(priority: string): BadgeVariant {
   return severityBadgeVariant(priority);
 }
 
+export function severityBoxClass(severity: string): string {
+  const key = severity.toLowerCase();
+  if (key === "low") return "bg-emerald-100/70 border-emerald-300/50";
+  if (key === "high") return "bg-[#f5e5e0] border-[#c9a89a]/60";
+  return "bg-amber-100/70 border-amber-300/50";
+}
+
 export function formatSentiment(score: number): string {
   if (score >= 0.85) return "Positive";
   if (score >= 0.7) return "Stable";

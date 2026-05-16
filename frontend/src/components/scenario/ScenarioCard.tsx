@@ -4,7 +4,12 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Scenario } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
-import { priorityBadgeVariant, severityBadgeVariant } from "@/lib/utils";
+import {
+  cn,
+  priorityBadgeVariant,
+  severityBadgeVariant,
+  severityBoxClass,
+} from "@/lib/utils";
 
 export function ScenarioCard({
   scenario,
@@ -78,7 +83,10 @@ export function ScenarioCard({
             {scenario.remedies.map((r, i) => (
               <div
                 key={i}
-                className="flex gap-3 border border-divider bg-ivory/50 p-3 text-sm"
+                className={cn(
+                  "flex gap-3 border p-3 text-sm",
+                  severityBoxClass(r.priority)
+                )}
               >
                 <Badge variant={priorityBadgeVariant(r.priority)}>
                   {r.priority}

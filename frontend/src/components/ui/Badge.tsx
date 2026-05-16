@@ -17,12 +17,12 @@ const variantStyles: Record<BadgeVariant, string> = {
   gold: "bg-gold/10 text-gold",
   risk: "bg-[#8b5a4a]/10 text-[#8b5a4a]",
   muted: "bg-ivory-deep text-charcoal-soft",
-  "severity-low": "bg-emerald-900/8 text-emerald-900/75",
-  "severity-medium": "bg-amber-900/10 text-amber-900/80",
-  "severity-high": "bg-[#8b5a4a]/12 text-[#7a4a3c]",
-  "status-open": "bg-amber-900/10 text-amber-900/85",
-  "status-monitoring": "bg-slate-700/10 text-slate-700/85",
-  "status-resolved": "bg-emerald-900/8 text-emerald-900/70",
+  "severity-low": "bg-emerald-200/90 text-charcoal",
+  "severity-medium": "bg-amber-200/90 text-charcoal",
+  "severity-high": "bg-[#e8cfc6] text-charcoal",
+  "status-open": "bg-amber-200/90 text-charcoal",
+  "status-monitoring": "bg-slate-200/90 text-charcoal",
+  "status-resolved": "bg-emerald-200/90 text-charcoal",
 };
 
 export function Badge({
