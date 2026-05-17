@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/Badge";
 import {
   cn,
   formatSentiment,
-  priorityBadgeVariant,
   resolutionBadgeVariant,
   sentimentColor,
   severityBadgeVariant,
   severityBoxClass,
 } from "@/lib/utils";
 import { LiveScenarioBanner } from "@/components/scenario/LiveScenarioBanner";
+import { RecommendationsList } from "@/components/guest/RecommendationsList";
 
 export default function GuestProfilePage() {
   const params = useParams();
@@ -24,6 +24,7 @@ export default function GuestProfilePage() {
   const [guest, setGuest] = useState<GuestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -55,6 +56,48 @@ export default function GuestProfilePage() {
       load();
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function handleResolveRecommendation(recommendationId: string) {
+    setResolvingId(recommendationId);
+    try {
+      const updated = await api.resolveRecommendation(recommendationId);
+      setGuest((prev) =>
+        prev
+          ? {
+              ...prev,
+              recommendations: prev.recommendations.map((r) =>
+                r.id === recommendationId ? { ...r, ...updated, status: "resolved" } : r
+              ),
+            }
+          : prev
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setResolvingId(null);
+    }
+  }
+
+  async function handleReopenRecommendation(recommendationId: string) {
+    setResolvingId(recommendationId);
+    try {
+      const updated = await api.reopenRecommendation(recommendationId);
+      setGuest((prev) =>
+        prev
+          ? {
+              ...prev,
+              recommendations: prev.recommendations.map((r) =>
+                r.id === recommendationId ? { ...r, ...updated, status: "pending" } : r
+              ),
+            }
+          : prev
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setResolvingId(null);
     }
   }
 
@@ -144,29 +187,12 @@ export default function GuestProfilePage() {
             </Section>
 
             <Section title="Recommended Actions">
-              <div className="space-y-3">
-                {guest.recommendations.map((r) => (
-                  <div
-                    key={r.id}
-                    className={cn(
-                      "flex gap-4 border p-5",
-                      severityBoxClass(r.priority)
-                    )}
-                  >
-                    <Badge variant={priorityBadgeVariant(r.priority)}>
-                      {r.priority}
-                    </Badge>
-                    <div>
-                      <p className="text-sm font-medium capitalize">
-                        {r.recommendationType.replace(/_/g, " ")}
-                      </p>
-                      <p className="mt-1 text-sm text-charcoal-soft">
-                        {r.reason}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <RecommendationsList
+                recommendations={guest.recommendations}
+                resolvingId={resolvingId}
+                onResolve={handleResolveRecommendation}
+                onReopen={handleReopenRecommendation}
+              />
             </Section>
 
             <Section title="Stay History">

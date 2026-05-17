@@ -31,6 +31,13 @@ export function severityBoxClass(severity: string): string {
   return "bg-amber-100/70 border-amber-300/50";
 }
 
+export function recommendationBoxClass(priority: string, status?: string): string {
+  if (status === "resolved") {
+    return "bg-ivory-deep/80 border-divider opacity-90";
+  }
+  return severityBoxClass(priority);
+}
+
 export function formatSentiment(score: number): string {
   if (score >= 0.85) return "Positive";
   if (score >= 0.7) return "Stable";

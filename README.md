@@ -1,4 +1,4 @@
-# Rosewood Intelligence — Hospitality 2030
+# Rosewood Compass — Hospitality 2030
 
 AI-powered hospitality memory and orchestration platform for **Rosewood Sand Hill**. Helps luxury hotel staff deliver deeply personalized, emotionally intelligent service — not a chatbot.
 

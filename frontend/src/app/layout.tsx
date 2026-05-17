@@ -22,7 +22,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Rosewood Intelligence | Sand Hill",
+  title: "Rosewood Compass | Sand Hill",
   description:
     "AI-powered hospitality memory and orchestration for luxury hotel operations.",
 };

@@ -212,4 +212,8 @@ export const api = {
     }),
   acknowledgeScenario: (id: string) =>
     fetchApi<Scenario>(`/scenarios/${id}/acknowledge`, { method: "PATCH" }),
+  resolveRecommendation: (id: string) =>
+    fetchApi<Recommendation>(`/recommendations/${id}/resolve`, { method: "PATCH" }),
+  reopenRecommendation: (id: string) =>
+    fetchApi<Recommendation>(`/recommendations/${id}/reopen`, { method: "PATCH" }),
 };
