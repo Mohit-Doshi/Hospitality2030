@@ -16,7 +16,9 @@ export async function processScenarioForGuest(
     propertyBriefing?: string;
   }
 ) {
-  const guestContext = await buildGuestContext(guestId);
+  const guestContext = await buildGuestContext(guestId, {
+    propertyEventId: options?.propertyEventId,
+  });
   if (!guestContext) return null;
 
   const contextualText =
@@ -152,15 +154,16 @@ export async function processPropertyWideScenario(scenarioText: string) {
     analysis: `Property-wide operational event affecting all in-house guests: ${trimmed}. Individual guest responses should reflect archetype, loyalty tier, and prior service context.`,
   };
 
-  const results = await Promise.all(
-    guests.map((g) =>
-      processScenarioForGuest(g.id, trimmed, {
-        scope: "property",
-        propertyEventId,
-        propertyBriefing: propertyAnalysis.analysis,
-      })
-    )
-  );
+  // Sequential so each guest sees prior guests' signals from this property event
+  const results = [];
+  for (const g of guests) {
+    const scenario = await processScenarioForGuest(g.id, trimmed, {
+      scope: "property",
+      propertyEventId,
+      propertyBriefing: propertyAnalysis.analysis,
+    });
+    if (scenario) results.push(scenario);
+  }
 
   return {
     propertyEventId,

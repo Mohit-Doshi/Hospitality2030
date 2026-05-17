@@ -64,7 +64,9 @@ export async function generateRecommendations(
   guestContext: Record<string, unknown>
 ): Promise<Array<{ type: string; reason: string; priority: string }>> {
   const text = await callClaude(
-    `Return ONLY a JSON array of 3-5 operational recommendations. Each item: { "type": string, "reason": string, "priority": "high"|"medium"|"low" }. Context:\n${JSON.stringify(guestContext, null, 2)}`,
+    `Return ONLY a JSON array of 3-5 operational recommendations. Each item: { "type": string, "reason": string, "priority": "high"|"medium"|"low" }.
+Consider liveSignals, pendingRecommendations, and historic context — avoid duplicating pending actions.
+Context:\n${JSON.stringify(guestContext, null, 2)}`,
     500
   );
   if (text) {
@@ -113,8 +115,17 @@ export async function analyzeScenario(
 
 Scenario: "${scenarioText}"
 
-Guest context:
+Guest context includes:
+- memories, incidents, affinities (historic institutional memory)
+- liveSignals: prior scenarios already reported for THIS guest today — consider patterns and escalation
+- relatedPropertySignals: other guests affected by the same property-wide event (if any)
+- pendingRecommendations: active staff actions already suggested — do not ignore these
+
+Full context:
 ${JSON.stringify(guestContext, null, 2)}
+
+If liveSignals show a recurring issue, increase urgency and reference the pattern discreetly.
+If pendingRecommendations already address this, note continuity in your analysis.
 
 Return ONLY JSON:
 {
@@ -146,13 +157,15 @@ Scenario: "${scenarioText}"
 Classification: ${analysis.eventType} (urgency: ${analysis.urgency})
 Initial analysis: ${analysis.analysis}
 
-Guest context (memories, incidents, affinities):
+Full guest context (memories, incidents, affinities, liveSignals, pendingRecommendations):
 ${JSON.stringify(guestContext, null, 2)}
 
 Rules:
 - For COMPLAINTS: prioritize recovery, empathy, discreet escalation; reference prior friction if relevant; suggest staff with highest affinity when appropriate.
 - For COMPLIMENTS: suggest thoughtful acknowledgment or amenity — avoid over-the-top gestures; reinforce what worked.
 - For OPERATIONAL/NEUTRAL: practical orchestration steps only.
+- Use liveSignals and relatedPropertySignals: if this repeats a prior signal, escalate or refine — do not contradict earlier staff guidance without reason.
+- Use pendingRecommendations: avoid duplicate remedies; complement, supersede, or consolidate when appropriate.
 - Never sound robotic or surveillance-like.
 
 Return ONLY JSON:
@@ -208,13 +221,31 @@ function fallbackAnalyzeScenario(
     eventType = "operational";
   }
 
-  const urgency =
-    eventType === "complaint" && ctx.riskLevel === "elevated" ? "high" : eventType === "complaint" ? "medium" : "low";
+  const liveSignals = (ctx.liveSignals as unknown[]) ?? [];
+  const hasPriorComplaints = liveSignals.some(
+    (s) => (s as { eventType?: string }).eventType === "complaint"
+  );
+
+  let urgency: ScenarioAnalysis["urgency"] =
+    eventType === "complaint" && ctx.riskLevel === "elevated"
+      ? "high"
+      : eventType === "complaint"
+        ? "medium"
+        : "low";
+
+  if (eventType === "complaint" && hasPriorComplaints) {
+    urgency = "high";
+  }
+
+  const patternNote =
+    liveSignals.length > 0
+      ? ` Builds on ${liveSignals.length} prior live signal(s) for this guest.`
+      : "";
 
   return {
     eventType,
     urgency,
-    analysis: `Live ${eventType} signal for ${ctx.name}: "${scenarioText.slice(0, 120)}${scenarioText.length > 120 ? "…" : ""}". Review guest memory and assign appropriate staff response.`,
+    analysis: `Live ${eventType} signal for ${ctx.name}: "${scenarioText.slice(0, 120)}${scenarioText.length > 120 ? "…" : ""}". Review guest memory and prior live signals.${patternNote}`,
   };
 }
 
@@ -270,19 +301,41 @@ function fallbackDiagnoseScenario(
     };
   }
 
+  const pending = (ctx.pendingRecommendations as Array<{ type: string }>) ?? [];
+  const liveSignals = (ctx.liveSignals as unknown[]) ?? [];
+  const hasDuplicateOutreach =
+    pending.some((r) => /outreach|manager|recovery/i.test(r.type)) &&
+    liveSignals.length > 0;
+
   if (analysis.eventType === "complaint") {
+    const remedies: ScenarioRemedy[] = [];
+
+    if (!hasDuplicateOutreach) {
+      remedies.push({
+        action: "manager_outreach",
+        reason: `Scenario requires attentive handling: ${scenarioText.slice(0, 80)}`,
+        priority: analysis.urgency === "high" ? "high" : "medium",
+        assignTo: suggestedStaff ?? undefined,
+      });
+    } else {
+      remedies.push({
+        action: "escalated_recovery_follow_up",
+        reason:
+          "Prior live signals and pending outreach exist — coordinate a single senior follow-up to avoid repetitive contact.",
+        priority: "high",
+        assignTo: suggestedStaff ?? undefined,
+      });
+    }
+
     return {
       diagnosis:
-        "Treat as service recovery priority. Address root cause promptly, avoid defensiveness, and offer a discreet remedy aligned with guest expectations.",
+        liveSignals.length > 0
+          ? "Recurring service signal — treat as elevated recovery. Consolidate with prior live signals; one discreet, authoritative resolution path."
+          : "Treat as service recovery priority. Address root cause promptly, avoid defensiveness, and offer a discreet remedy aligned with guest expectations.",
       handlingTone: "discreet recovery",
       suggestedStaff,
       remedies: [
-        {
-          action: "manager_outreach",
-          reason: `Scenario requires attentive handling: ${scenarioText.slice(0, 80)}`,
-          priority: analysis.urgency === "high" ? "high" : "medium",
-          assignTo: suggestedStaff ?? undefined,
-        },
+        ...remedies,
         ...(ctx.riskLevel === "elevated"
           ? [
               {

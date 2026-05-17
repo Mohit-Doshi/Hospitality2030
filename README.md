@@ -46,8 +46,9 @@ Optional: set `ANTHROPIC_API_KEY` in `backend/.env` for live narrative generatio
 ### Scenario demo script
 
 1. Open **Scenario Simulator** → select **Richard Pemberton** → paste: *"Guest upset about incorrect minibar charges on folio."* → **Send to staff console** (wait ~3–5s for Claude).
-2. Open **Live Signals** — see complaint classification, recovery diagnosis, staff assignment.
-3. Open Richard's **guest profile** — live banner + new recommendations at top.
+2. Send a **second** scenario for the same guest — intelligence uses prior live signals + pending recommendations (escalation, no duplicate outreach).
+3. Open **Live Signals** — see complaint classification, recovery diagnosis, staff assignment.
+4. Open Richard's **guest profile** — live banner + new recommendations at top.
 
 ## Modules
 
